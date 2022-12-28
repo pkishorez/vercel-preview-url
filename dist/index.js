@@ -4553,6 +4553,125 @@ exports.Deprecation = Deprecation;
 
 /***/ }),
 
+/***/ 2437:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const fs = __nccwpck_require__(7147)
+const path = __nccwpck_require__(1017)
+const os = __nccwpck_require__(2037)
+const packageJson = __nccwpck_require__(9968)
+
+const version = packageJson.version
+
+const LINE = /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/mg
+
+// Parser src into an Object
+function parse (src) {
+  const obj = {}
+
+  // Convert buffer to string
+  let lines = src.toString()
+
+  // Convert line breaks to same format
+  lines = lines.replace(/\r\n?/mg, '\n')
+
+  let match
+  while ((match = LINE.exec(lines)) != null) {
+    const key = match[1]
+
+    // Default undefined or null to empty string
+    let value = (match[2] || '')
+
+    // Remove whitespace
+    value = value.trim()
+
+    // Check if double quoted
+    const maybeQuote = value[0]
+
+    // Remove surrounding quotes
+    value = value.replace(/^(['"`])([\s\S]*)\1$/mg, '$2')
+
+    // Expand newlines if double quoted
+    if (maybeQuote === '"') {
+      value = value.replace(/\\n/g, '\n')
+      value = value.replace(/\\r/g, '\r')
+    }
+
+    // Add to object
+    obj[key] = value
+  }
+
+  return obj
+}
+
+function _log (message) {
+  console.log(`[dotenv@${version}][DEBUG] ${message}`)
+}
+
+function _resolveHome (envPath) {
+  return envPath[0] === '~' ? path.join(os.homedir(), envPath.slice(1)) : envPath
+}
+
+// Populates process.env from .env file
+function config (options) {
+  let dotenvPath = path.resolve(process.cwd(), '.env')
+  let encoding = 'utf8'
+  const debug = Boolean(options && options.debug)
+  const override = Boolean(options && options.override)
+
+  if (options) {
+    if (options.path != null) {
+      dotenvPath = _resolveHome(options.path)
+    }
+    if (options.encoding != null) {
+      encoding = options.encoding
+    }
+  }
+
+  try {
+    // Specifying an encoding returns a string instead of a buffer
+    const parsed = DotenvModule.parse(fs.readFileSync(dotenvPath, { encoding }))
+
+    Object.keys(parsed).forEach(function (key) {
+      if (!Object.prototype.hasOwnProperty.call(process.env, key)) {
+        process.env[key] = parsed[key]
+      } else {
+        if (override === true) {
+          process.env[key] = parsed[key]
+        }
+
+        if (debug) {
+          if (override === true) {
+            _log(`"${key}" is already defined in \`process.env\` and WAS overwritten`)
+          } else {
+            _log(`"${key}" is already defined in \`process.env\` and was NOT overwritten`)
+          }
+        }
+      }
+    })
+
+    return { parsed }
+  } catch (e) {
+    if (debug) {
+      _log(`Failed to load ${dotenvPath} ${e.message}`)
+    }
+
+    return { error: e }
+  }
+}
+
+const DotenvModule = {
+  config,
+  parse
+}
+
+module.exports.config = DotenvModule.config
+module.exports.parse = DotenvModule.parse
+module.exports = DotenvModule
+
+
+/***/ }),
+
 /***/ 3287:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -9635,6 +9754,14 @@ module.exports = require("zlib");
 
 /***/ }),
 
+/***/ 9968:
+/***/ ((module) => {
+
+"use strict";
+module.exports = JSON.parse('{"name":"dotenv","version":"16.0.3","description":"Loads environment variables from .env file","main":"lib/main.js","types":"lib/main.d.ts","exports":{".":{"require":"./lib/main.js","types":"./lib/main.d.ts","default":"./lib/main.js"},"./config":"./config.js","./config.js":"./config.js","./lib/env-options":"./lib/env-options.js","./lib/env-options.js":"./lib/env-options.js","./lib/cli-options":"./lib/cli-options.js","./lib/cli-options.js":"./lib/cli-options.js","./package.json":"./package.json"},"scripts":{"dts-check":"tsc --project tests/types/tsconfig.json","lint":"standard","lint-readme":"standard-markdown","pretest":"npm run lint && npm run dts-check","test":"tap tests/*.js --100 -Rspec","prerelease":"npm test","release":"standard-version"},"repository":{"type":"git","url":"git://github.com/motdotla/dotenv.git"},"keywords":["dotenv","env",".env","environment","variables","config","settings"],"readmeFilename":"README.md","license":"BSD-2-Clause","devDependencies":{"@types/node":"^17.0.9","decache":"^4.6.1","dtslint":"^3.7.0","sinon":"^12.0.1","standard":"^16.0.4","standard-markdown":"^7.1.0","standard-version":"^9.3.2","tap":"^15.1.6","tar":"^6.1.11","typescript":"^4.5.4"},"engines":{"node":">=12"}}');
+
+/***/ }),
+
 /***/ 2020:
 /***/ ((module) => {
 
@@ -9687,50 +9814,112 @@ var __webpack_exports__ = {};
 const core = __nccwpck_require__(2186);
 const github = __nccwpck_require__(5438);
 const fetch = __nccwpck_require__(467);
+const dotenv = __nccwpck_require__(2437);
+
+dotenv.config();
 
 try {
   (async () => {
     // `who-to-greet` input defined in action metadata file
-    const nameToGreet = core.getInput("who-to-greet");
-    console.log(`Hello ${nameToGreet}!`);
-    const time = new Date().toTimeString();
-    core.setOutput("time", time);
-    // Get the JSON webhook payload for the event that triggered the workflow
-    const payload = JSON.stringify(github.context.payload, undefined, 2);
-    console.log(`The event payload: ${payload}`);
+    const projectId = core.getInput("projectId");
+    const teamId = core.getInput("teamId");
 
     const githubRepoName = github.context.payload.repository?.name; // ?? "sample-nextjs-repo";
-    const githubCommitSha = github.context.payload.after; // ??"3569155c4430cd6b6c1d612d6dc57a302f3fae31";
+    const githubCommitSha = github.context.payload.after; //??"3569155c4430cd6b6c1d612d6dc57a302f3fae31";
 
     console.log(
       "GITHUB REPO: " +
-        JSON.stringify({ githubRepoName, githubCommitSha }, null, "  ")
+        JSON.stringify(
+          { githubRepoName, githubCommitSha, projectId, teamId },
+          null,
+          "  "
+        )
     );
 
-    const data = await fetch("https://api.vercel.com/v6/deployments", {
-      headers: {
-        Authorization: `Bearer ${process.env.VERCEL_TOKEN}`,
-      },
-      method: "get",
-    }).then((v) => v.json());
+    async function getDeploymentID() {
+      let retries = 0;
 
-    while (true) {
-      const deployments = data.deployments;
-      const result = deployments.find(
-        (deployment) =>
-          deployment.meta.githubCommitRepo === githubRepoName &&
-          deployment.meta.githubCommitSha === githubCommitSha
-      );
+      while (true) {
+        console.log("RETRY: ", retries++);
 
-      if (result) {
-        console.log("DATA: ", JSON.stringify(result, null, "  "));
-        break;
-      } else {
-        console.log("DEPLOYMENTS: " + JSON.stringify(deployments, null, "  "));
-        break;
+        let obj = {};
+        if (projectId) {
+          obj.projectId = projectId;
+        }
+        if (teamId) {
+          obj.teamId = teamId;
+        }
+
+        console.log("OBJ: ", obj);
+
+        const params = new URLSearchParams(obj).toString();
+        const data = await fetch(
+          `https://api.vercel.com/v6/deployments?${params}`,
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.VERCEL_TOKEN}`,
+            },
+            method: "get",
+          }
+        ).then((v) => v.json());
+
+        const deployments = data.deployments;
+        const result = deployments.find(
+          (deployment) =>
+            deployment.meta.githubCommitRepo === githubRepoName &&
+            deployment.meta.githubCommitSha === githubCommitSha
+        );
+
+        if (result) {
+          return result.uid;
+        } else {
+          if (retries === 5) {
+            core.setFailed("Max retries reached!");
+            console.log(
+              "DEPLOYMENTS: ",
+              JSON.stringify(deployments, null, "  ")
+            );
+            return null;
+          }
+        }
+        await new Promise((r) => setTimeout(r, 5000));
       }
-      await new Promise((r) => setTimeout(r, 10000));
     }
+
+    async function getDeploymentStats(deploymentID) {
+      const data = await fetch(
+        `https://api.vercel.com/v6/deployments/${deploymentID}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.VERCEL_TOKEN}`,
+          },
+          method: "get",
+        }
+      ).then((v) => v.json());
+
+      return data;
+    }
+
+    const deploymentID = await getDeploymentID();
+    if (!deploymentID) {
+      core.setFailed("Error.");
+      return;
+    }
+    const deploymentStats = await getDeploymentStats(deploymentID);
+
+    console.log(
+      `DEPLOYMENT STATS: ${JSON.stringify(
+        {
+          url: deploymentStats.url,
+          readyState: deploymentStats.readyState,
+          inspectorUrl: deploymentStats.inspectorUrl,
+        },
+        null,
+        "  "
+      )}`
+    );
+
+    core.setOutput("vercelDeploymentUrl", deploymentStats.url);
   })();
 } catch (error) {
   core.setFailed(error.message);

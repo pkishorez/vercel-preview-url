@@ -1,13 +1,15 @@
 name: "Hello World"
 description: "Greet someone and record the time"
 inputs:
-  who-to-greet: # id of input
-    description: "Who to greet"
-    required: true
-    default: "World"
+  projectId: # id of input
+    description: "Project ID if any"
+    required: false
+  teamId:
+    description: "Team ID if any."
+    required: false
 outputs:
-  time: # id of output
-    description: "The time we greeted you"
+  vercelDeploymentUrl: # id of output
+    description: "Preview Deployment URL for Vercel."
 runs:
   using: "node16"
   main: "dist/index.js"
