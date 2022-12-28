@@ -9840,8 +9840,6 @@ try {
       let retries = 0;
 
       while (true) {
-        console.log("RETRY: ", retries++);
-
         let obj = {};
         if (projectId) {
           obj.projectId = projectId;
@@ -9883,6 +9881,7 @@ try {
           }
         }
         await new Promise((r) => setTimeout(r, 5000));
+        console.log("RETRY: ", retries++);
       }
     }
 
@@ -9900,12 +9899,28 @@ try {
       return data;
     }
 
+    async function waitForDeploymentToBeReady(deploymentID) {
+      let retries = 0;
+
+      while (true) {
+        const deploymentStats = await getDeploymentStats(deploymentID);
+
+        if (deploymentStats.readyState === "READY") {
+          return deploymentStats;
+        }
+
+        await new Promise((r) => setTimeout(r, 5000));
+        console.log("RETRY: ", retries++);
+      }
+    }
+
     const deploymentID = await getDeploymentID();
     if (!deploymentID) {
       core.setFailed("Error.");
       return;
     }
-    const deploymentStats = await getDeploymentStats(deploymentID);
+
+    const deploymentStats = await waitForDeploymentToBeReady(deploymentID);
 
     console.log(
       `DEPLOYMENT STATS: ${JSON.stringify(
