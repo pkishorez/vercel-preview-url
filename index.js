@@ -16,6 +16,11 @@ try {
     const githubRepoName = github.context.payload.repository; // ?? "sample-nextjs-repo";
     const githubCommitSha = github.context.payload.after; // ??"3569155c4430cd6b6c1d612d6dc57a302f3fae31";
 
+    console.log(
+      "GITHUB REPO: " +
+        JSON.stringify({ githubRepoName, githubCommitSha }, null, "  ")
+    );
+
     const data = await fetch("https://api.vercel.com/v6/deployments", {
       headers: {
         Authorization: `Bearer ${process.env.VERCEL_TOKEN}`,
