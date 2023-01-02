@@ -9653,7 +9653,9 @@ async function getDeploymentID() {
 
   let retries = 0;
   while (true) {
-    let obj = {};
+    let obj = {
+      limit: 100,
+    };
     if (projectId) {
       obj.projectId = projectId;
     }
