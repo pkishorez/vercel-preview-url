@@ -8,8 +8,7 @@ async function getDeploymentID() {
 
   const githubRepoName =
     github.context.payload.repository?.name ?? "sample-nextjs-repo";
-  const githubCommitSha =
-    github.context.payload.after ?? "3569155c4430cd6b6c1d612d6dc57a302f3fae31";
+  const githubCommitSha = github.context.payload.after; // ?? "3569155c4430cd6b6c1d612d6dc57a302f3fae31";
 
   console.log(
     "GITHUB REPO: " +
@@ -55,7 +54,10 @@ async function getDeploymentID() {
     } else {
       if (retries === 5) {
         core.setFailed("Max retries reached!");
-        console.log("DEPLOYMENTS: ", JSON.stringify(deployments, null, "  "));
+        console.log(
+          "github.context.payload: ",
+          JSON.stringify(github.context.payload, null, "  ")
+        );
         return null;
       }
     }
