@@ -9637,20 +9637,26 @@ async function getDeploymentID() {
   const projectId = core.getInput("projectId");
   const teamId = core.getInput("teamId");
 
-  const githubRepoName =
-    github.context.payload.repository?.name ?? "sample-nextjs-repo";
-  const githubCommitSha = github.context.payload.after; // ?? "3569155c4430cd6b6c1d612d6dc57a302f3fae31";
+  const githubRepoName = github.context.payload.repository?.name;
+  const githubCommitSha =
+    github.context.payload.after ?? github.context.payload.before;
 
   console.log(
     "GITHUB REPO: " +
       JSON.stringify(
-        { githubRepoName, githubCommitSha, projectId, teamId },
+        {
+          githubRepoName,
+          githubCommitSha,
+          projectId,
+          teamId,
+          payload: github.context.payload,
+        },
         null,
         "  "
       )
   );
 
-  let retries = 0;
+  let waiting = 0;
   while (true) {
     let obj = {
       limit: 100,
@@ -9683,7 +9689,7 @@ async function getDeploymentID() {
     if (result) {
       return result.uid;
     } else {
-      if (retries === 5) {
+      if (waiting === 5) {
         core.setFailed("Max retries reached!");
         console.log(
           "github.context.payload: ",
@@ -9693,7 +9699,7 @@ async function getDeploymentID() {
       }
     }
     await new Promise((r) => setTimeout(r, 5000));
-    console.log("RETRY: ", retries++);
+    console.log("Waiting: ", waiting++);
   }
 }
 
