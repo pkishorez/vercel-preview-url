@@ -7,13 +7,16 @@ async function getDeploymentID() {
   const teamId = core.getInput("teamId");
 
   const githubRepoName = github.context.payload.repository?.name;
-  const githubCommitSha =
-    github.context.payload.after ?? github.context.payload.before;
+  const headSha = github.context.payload.pull_request?.head?.sha;
+  const afterSha = github.context.payload.after;
+  const githubCommitSha = afterSha || headSha;
 
   console.log(
     "GITHUB REPO: " +
       JSON.stringify(
         {
+          afterSha,
+          headSha,
           githubRepoName,
           githubCommitSha,
           projectId,
